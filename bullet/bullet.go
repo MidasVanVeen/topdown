@@ -3,6 +3,7 @@ package bullet
 import (
 	"fmt"
 	"github.com/faiface/pixel"
+	"topdown/globals"
 )
 
 type Bullet struct {
@@ -19,6 +20,9 @@ func (b *Bullet) Update(dt float64) {
 	fmt.Println("bulletVel: ", b.Vel)
 	b.Life -= dt
 	b.Rect = b.Rect.Moved(b.Vel.Scaled(dt))
+	if (globals.CheckWallCollision(b.Rect.Moved(b.Vel.Scaled(dt)).Center().X,b.Rect.Moved(b.Vel.Scaled(dt)).Center().Y, globals.ColisionImageSrc) == 1) {
+		b.Life = 0
+	}
 }
 
 func (b *Bullet) Draw(t pixel.Target) {

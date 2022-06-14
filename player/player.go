@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 	"github.com/faiface/pixel"
-	"topdown/types"
+	"topdown/globals"
 )
 
 const (
@@ -34,7 +34,7 @@ type PlayerAnimation struct {
 	Sprite *pixel.Sprite
 }
 
-func (p *PlayerPhysics) Update(dt float64, ctrl types.Ctrl) {
+func (p *PlayerPhysics) Update(dt float64, ctrl globals.Ctrl) {
 	p.Hittimer -= dt
 	if ctrl.X != 0 || ctrl.Y != 0 && ctrl.S == 0 {
 		p.State = 2
@@ -48,7 +48,7 @@ func (p *PlayerPhysics) Update(dt float64, ctrl types.Ctrl) {
 	if (ctrl.X != 0 || ctrl.Y != 0) && ctrl.S != 0 {
 		p.State = 3
 	}
-	ectrl := types.Ctrl{0,0,0}
+	ectrl := globals.Ctrl{0,0,0}
 	if ctrl == ectrl {
 		p.State = 1
 	}
@@ -85,7 +85,24 @@ func (p *PlayerPhysics) Update(dt float64, ctrl types.Ctrl) {
 		p.Vel.Y += drag * dt
 	}
 
-	p.Rect = p.Rect.Moved(p.Vel.Scaled(dt))
+
+	moveX := true
+	moveY := true
+	for angle := 0.0; angle < 2*math.Pi; angle += 0.05 {
+		if globals.CheckWallCollision(p.Rect.Moved(pixel.V(p.Vel.Scaled(dt).X,0)).Center().X + (math.Cos(angle) * p.Rect.W()/3),p.Rect.Moved(pixel.V(p.Vel.Scaled(dt).X,0)).Center().Y + (math.Sin(angle) * p.Rect.H()/3), globals.ColisionImageSrc) == 1 {
+			moveX = false
+		}
+		if globals.CheckWallCollision(p.Rect.Moved(pixel.V(0,p.Vel.Scaled(dt).Y)).Center().X + (math.Cos(angle) * p.Rect.W()/3),p.Rect.Moved(pixel.V(0,p.Vel.Scaled(dt).Y)).Center().Y + (math.Sin(angle) * p.Rect.H()/3),globals.ColisionImageSrc) == 1 {
+			moveY = false
+		}
+	}
+
+	if moveX {
+		p.Rect = p.Rect.Moved(pixel.V(p.Vel.Scaled(dt).X,0))
+	}
+	if moveY {
+		p.Rect = p.Rect.Moved(pixel.V(0,p.Vel.Scaled(dt).Y))
+	}
 }
 
 func (p *PlayerPhysics) CheckEnemyHit(r pixel.Rect) {
@@ -95,7 +112,7 @@ func (p *PlayerPhysics) CheckEnemyHit(r pixel.Rect) {
 	}
 }
 
-func (p *PlayerAnimation) Update(dt float64, phys *PlayerPhysics, ctrl types.Ctrl) {
+func (p *PlayerAnimation) Update(dt float64, phys *PlayerPhysics, ctrl globals.Ctrl) {
 	p.Counter += dt
 	if ctrl.X == 1 {
 		p.Dir = math.Pi/2

@@ -5,6 +5,7 @@ import (
 	"github.com/faiface/pixel"
 	"topdown/player"
 	"topdown/bullet"
+	"topdown/globals"
 )
 
 type Enemy struct {
@@ -30,7 +31,24 @@ func (e *Enemy) Update(dt float64, p *player.PlayerPhysics) {
 		}
 		i := int(math.Floor(e.Counter / e.Rate))
 		e.Frame = e.Anims["walk"][i%len(e.Anims["walk"])]
-		e.Rect = e.Rect.Moved(p.Rect.Center().Sub(e.Rect.Center()).Unit().Scaled(dt * e.Speed)) 
+		
+		moveX := true
+		moveY := true
+		for angle := 0.0; angle < 2*math.Pi; angle += 0.10 {
+			if globals.CheckWallCollision(e.Rect.Moved(pixel.V(p.Rect.Center().Sub(e.Rect.Center()).X,0).Unit().Scaled(dt*e.Speed)).Center().X + (math.Cos(angle) * e.Rect.W()/3),e.Rect.Moved(pixel.V(p.Rect.Center().Sub(e.Rect.Center()).X,0).Unit().Scaled(dt*e.Speed)).Center().Y + (math.Sin(angle) * e.Rect.H()/3),globals.ColisionImageSrc) == 1 {
+				moveX = false
+			}
+			if globals.CheckWallCollision(e.Rect.Moved(pixel.V(0,p.Rect.Center().Sub(e.Rect.Center()).Y).Unit().Scaled(dt*e.Speed)).Center().X + (math.Cos(angle) * e.Rect.W()/3),e.Rect.Moved(pixel.V(0,p.Rect.Center().Sub(e.Rect.Center()).Y).Unit().Scaled(dt*e.Speed)).Center().Y + (math.Sin(angle) * e.Rect.H()/3),globals.ColisionImageSrc) == 1 {
+				moveY = false
+			}
+		}
+
+		if moveX {
+			e.Rect = e.Rect.Moved(pixel.V(p.Rect.Center().Sub(e.Rect.Center()).Unit().Scaled(dt * e.Speed).X,0)) 
+		}
+		if moveY {
+			e.Rect = e.Rect.Moved(pixel.V(0,p.Rect.Center().Sub(e.Rect.Center()).Unit().Scaled(dt * e.Speed).Y)) 
+		}
 		e.Dir = p.Rect.Center().Sub(e.Rect.Center()).Angle()
 	} else {
 		e.Frame = e.Anims["death"][0]

@@ -2,33 +2,32 @@ package main
 
 import (
 	"fmt"
-	"time"
-	"math"
-	"math/rand"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"golang.org/x/image/colornames"
-	
-	"topdown/player"
-	"topdown/sheetloader"
-	"topdown/types"
+	"math"
+	"math/rand"
+	"time"
 	"topdown/bullet"
 	"topdown/enemy"
+	"topdown/globals"
+	"topdown/player"
+	"topdown/sheetloader"
 )
 
 const (
-	BULLETTIMEOUT = 0.2
+	BULLETTIMEOUT     = 0.2
 	ENEMYSPAWNTIMEOUT = 5
 )
 
-func SpawnEnemy(x,y float64, enemysheet pixel.Picture, enemyanims map[string][]pixel.Rect) enemy.Enemy {
+func SpawnEnemy(x, y float64, enemysheet pixel.Picture, enemyanims map[string][]pixel.Rect) enemy.Enemy {
 	return enemy.Enemy{
-		Rect: pixel.R(0,0,120*0.90,96*0.90).Moved(pixel.V(x,y)),
-		Sheet: enemysheet,Anims: enemyanims,
-		Rate: 0.5,
+		Rect:  pixel.R(0, 0, 120*0.90, 96*0.90).Moved(pixel.V(x, y)),
+		Sheet: enemysheet, Anims: enemyanims,
+		Rate:  0.5,
 		Speed: 80,
-		Life: 3,
+		Life:  3,
 	}
 }
 
@@ -36,21 +35,23 @@ func run() {
 	rand.Seed(time.Now().UnixNano())
 
 	cfg := pixelgl.WindowConfig{
-		Title: "topdown",
-		Bounds: pixel.R(0,0,1024,768),
+		Title:  "topdown",
+		Bounds: pixel.R(0, 0, 1024, 768),
 	}
 
 	win, err := pixelgl.NewWindow(cfg)
 	if err != nil {
 		panic(err)
 	}
-	
+
+	globals.InitGlobals()
+
 	// inladen van alle plaatjes en animaties dmv een sheetloader
 	backgroundsheet, backgroundanims, err := sheetloader.LoadSheet("assets/levels/1.png", "assets/levels/1.csv", 1000)
 	if err != nil {
 		panic(err)
 	}
-	backgroundRect := pixel.R(-1000*1.5,-833*1.5,1000*1.5,833*1.5)
+	backgroundRect := pixel.R(-1000*1.5, -833*1.5, 1000*1.5, 833*1.5)
 	overlaysheet, overlayanims, err := sheetloader.LoadSheet("assets/other/overlay.png", "assets/other/overlay.csv", 640)
 	if err != nil {
 		panic(err)
@@ -69,25 +70,25 @@ func run() {
 	if err != nil {
 		panic(err)
 	}
-	playersheet, playeranims, err := sheetloader.LoadSheet("assets/player/playersheet.png", "assets/player/playersheet.csv",100) 
+	playersheet, playeranims, err := sheetloader.LoadSheet("assets/player/playersheet.png", "assets/player/playersheet.csv", 100)
 	if err != nil {
 		panic(err)
 	}
 
 	// playerphysics object. hier gebeuren alle berekeningen voor het player object. denk aan beweging en controls
-	playerphys := &player.PlayerPhysics {
-		Vel: pixel.V(0,0),
-		Rect: pixel.R(0,0,120*0.90,96*0.90),
+	playerphys := &player.PlayerPhysics{
+		Vel:      pixel.V(0, 0),
+		Rect:     pixel.R(0, 0, 120*0.90, 96*0.90),
 		MaxSpeed: 220,
-		State: 1,
-		Life: 0,
+		State:    1,
+		Life:     0,
 	}
-	// playeranimations object. hier gebeuren alle animatie gerelateerde dingen. 
-	playeranim := &player.PlayerAnimation {
+	// playeranimations object. hier gebeuren alle animatie gerelateerde dingen.
+	playeranim := &player.PlayerAnimation{
 		Sheet: playersheet,
 		Anims: playeranims,
-		Rate: 0.2,
-		Dir: 1,
+		Rate:  0.2,
+		Dir:   1,
 	}
 
 	bullets := []bullet.Bullet{} // empty bullet array
@@ -104,17 +105,17 @@ func run() {
 	camPos := pixel.ZV // empty camera pos vector.
 
 	// imd declarations, dit kan je zien als de render lagen van het spelletje.
-	playerimd := imdraw.New(playersheet);
+	playerimd := imdraw.New(playersheet)
 	playerimd.Precision = 32
-	enemyimd := imdraw.New(enemysheet);
+	enemyimd := imdraw.New(enemysheet)
 	enemyimd.Precision = 32
-	bulletsimd := imdraw.New(bulletsheet);
+	bulletsimd := imdraw.New(bulletsheet)
 	bulletsimd.Precision = 32
-	backgroundimd := imdraw.New(backgroundsheet);
+	backgroundimd := imdraw.New(backgroundsheet)
 	backgroundimd.Precision = 32
-	overlayimd := imdraw.New(overlaysheet);
+	overlayimd := imdraw.New(overlaysheet)
 	overlayimd.Precision = 32
-	healthbarimd := imdraw.New(healthbarsheet);
+	healthbarimd := imdraw.New(healthbarsheet)
 	healthbarimd.Precision = 32
 
 	// timer voor schieten. als deze 0 is mag de speler weer shieten.
@@ -124,13 +125,15 @@ func run() {
 	// eerste tijdspunt voor berekenen van deltatime
 	t1 := time.Now()
 	// laatste richting waar de speler naar keek. dit is alleen voor het gerekenen van de richting van de bullets
-	lastdir := types.Ctrl{1,0,0} // dit is van type Ctrl (control). zie topdown/types voor meer info
+	lastdir := globals.Ctrl{1, 0, 0} // dit is van type Ctrl (control). zie topdown/types voor meer info
 	for {
 		// get deltatime
-		t2 := time.Now() // tweede tijdspunt voor berekenen van deltatime.
-		dt := t2.Sub(t1).Seconds() // deltatime in secondes. dit is de tijd sinds de laatste loop iteratie.
+		t2 := time.Now()                               // tweede tijdspunt voor berekenen van deltatime.
+		dt := t2.Sub(t1).Seconds()                     // deltatime in secondes. dit is de tijd sinds de laatste loop iteratie.
 		fmt.Println("pos: ", playerphys.Rect.Center()) // DEBUG
-		t1 = time.Now()  // zet het eerste weer naar de huidige tijd
+		t1 = time.Now()                                // zet het eerste weer naar de huidige tijd
+
+		fmt.Println(int(playerphys.Rect.Center().X/3+500), int(playerphys.Rect.Center().Y/3+833/2))
 
 		// set cam pos
 		camPos = pixel.Lerp(camPos, playerphys.Rect.Center(), 1-math.Pow(1.0/128, dt)) // lerp geeft een punt op een lijn tussen 2 punten
@@ -139,22 +142,22 @@ func run() {
 
 		// update
 		// controls
-		ctrl := types.Ctrl{0,0,0}
+		ctrl := globals.Ctrl{0, 0, 0}
 		if win.Pressed(pixelgl.KeyLeft) {
 			ctrl.X = -1
-			lastdir = types.Ctrl{-1,0,0}
+			lastdir = globals.Ctrl{-1, 0, 0}
 		}
 		if win.Pressed(pixelgl.KeyRight) {
 			ctrl.X = 1
-			lastdir = types.Ctrl{1,0,0}
+			lastdir = globals.Ctrl{1, 0, 0}
 		}
 		if win.Pressed(pixelgl.KeyDown) {
 			ctrl.Y = -1
-			lastdir = types.Ctrl{0,-1,0}
+			lastdir = globals.Ctrl{0, -1, 0}
 		}
 		if win.Pressed(pixelgl.KeyUp) {
 			ctrl.Y = 1
-			lastdir = types.Ctrl{0,1,0}
+			lastdir = globals.Ctrl{0, 1, 0}
 		}
 		if win.Pressed(pixelgl.KeyS) {
 			ctrl.S = 1
@@ -164,12 +167,12 @@ func run() {
 		if win.Pressed(pixelgl.KeySpace) && ctrl.S == 1 {
 			if bullettimer <= 0 { // check of bullet
 				bullets = append(bullets, bullet.Bullet{
-					Vel: pixel.V(lastdir.X * 1200, lastdir.Y * 1200),
-					Rect: pixel.R(-0.1*87/2,-0.1*184/2,0.1*87/2,0.1*184/2).Moved(playerphys.Rect.Center()).Moved(pixel.V(lastdir.X*40,lastdir.X*-20)).Moved(pixel.V(lastdir.Y*25,lastdir.Y*25)),
-					Life: 0.5,
+					Vel:   pixel.V(lastdir.X*1200, lastdir.Y*1200),
+					Rect:  pixel.R(-0.1*87/2, -0.1*184/2, 0.1*87/2, 0.1*184/2).Moved(playerphys.Rect.Center()).Moved(pixel.V(lastdir.X*40, lastdir.X*-20)).Moved(pixel.V(lastdir.Y*25, lastdir.Y*25)),
+					Life:  0.5,
 					Sheet: bulletsheet,
 					Frame: bulletanims["main"][0],
-					Dir: playeranim.Dir + math.Pi,
+					Dir:   playeranim.Dir + math.Pi,
 				})
 				bullettimer = BULLETTIMEOUT
 			}
@@ -181,8 +184,8 @@ func run() {
 			enemytimer = ENEMYSPAWNTIMEOUT
 		}
 
-		playerphys.Update(dt,ctrl)
-		playeranim.Update(dt,playerphys, ctrl)
+		playerphys.Update(dt, ctrl)
+		playeranim.Update(dt, playerphys, ctrl)
 
 		for i := range enemies {
 			if enemies[i].Life > 0 {
@@ -201,7 +204,7 @@ func run() {
 
 		for i := range enemies {
 			enemies[i].Update(dt, playerphys)
-			for _,b := range bullets {
+			for _, b := range bullets {
 				enemies[i].CheckHit(&b)
 			}
 		}
@@ -228,48 +231,53 @@ func run() {
 		for i := range bullets {
 			bullets[i].Draw(bulletsimd)
 		}
-		
+
 		bulletsimd.Draw(canvas)
 
 		for i := range enemies {
 			enemies[i].Draw(enemyimd)
 		}
 
-		enemyimd.Draw(canvas)
+		if playerphys.Life >= 4 {
+			fmt.Println("Game over")
+		} else {
+			enemyimd.Draw(canvas)
 
-		playeranim.Draw(playerimd, playerphys)
-		playerimd.Draw(canvas)
+			playeranim.Draw(playerimd, playerphys)
+			playerimd.Draw(canvas)
 
-		overlaySprite := pixel.NewSprite(nil, pixel.Rect{})
-		overlaySprite.Set(overlaysheet, overlayanims["main"][0])
-		overlaySprite.Draw(overlayimd, pixel.IM.ScaledXY(pixel.ZV, pixel.V(
-			overlayRect.W()/overlayanims["main"][0].W(),
-			overlayRect.H()/overlayanims["main"][0].H(),
-		)).Moved(camPos))
+			overlaySprite := pixel.NewSprite(nil, pixel.Rect{})
+			overlaySprite.Set(overlaysheet, overlayanims["main"][0])
+			overlaySprite.Draw(overlayimd, pixel.IM.ScaledXY(pixel.ZV, pixel.V(
+				overlayRect.W()/overlayanims["main"][0].W(),
+				overlayRect.H()/overlayanims["main"][0].H(),
+			)).Moved(camPos))
 
-		overlayimd.Draw(canvas)
+			overlayimd.Draw(canvas)
 
-		healthbarSprite := pixel.NewSprite(nil, pixel.Rect{})
-		healthbarSprite.Set(healthbarsheet, healthbaranims["main"][playerphys.Life])
-		healthbarSprite.Draw(healthbarimd, pixel.IM.ScaledXY(pixel.ZV, pixel.V(
-			healthbarRect.W()/healthbaranims["main"][playerphys.Life].W(),
-			healthbarRect.H()/healthbaranims["main"][playerphys.Life].H(),
-		)).Moved(camPos.Add(pixel.V(-200,200))))
+			healthbarSprite := pixel.NewSprite(nil, pixel.Rect{})
+			healthbarSprite.Set(healthbarsheet, healthbaranims["main"][playerphys.Life])
+			healthbarSprite.Draw(healthbarimd, pixel.IM.ScaledXY(pixel.ZV, pixel.V(
+				healthbarRect.W()/healthbaranims["main"][playerphys.Life].W(),
+				healthbarRect.H()/healthbaranims["main"][playerphys.Life].H(),
+			)).Moved(camPos.Add(pixel.V(-200, 200))))
 
-		healthbarimd.Draw(canvas)
+			healthbarimd.Draw(canvas)
 
-		win.Clear(colornames.White)
-		win.SetMatrix(pixel.IM.Scaled(pixel.ZV,
-			math.Min(
-				win.Bounds().W()/canvas.Bounds().W(),
-				win.Bounds().H()/canvas.Bounds().H(),
-			),
-		).Moved(win.Bounds().Center()))
-		canvas.Draw(win, pixel.IM.Moved(canvas.Bounds().Center()))
+			win.Clear(colornames.White)
+			win.SetMatrix(pixel.IM.Scaled(pixel.ZV,
+				math.Min(
+					win.Bounds().W()/canvas.Bounds().W(),
+					win.Bounds().H()/canvas.Bounds().H(),
+				),
+			).Moved(win.Bounds().Center()))
+			canvas.Draw(win, pixel.IM.Moved(canvas.Bounds().Center()))
+		}
+
 		win.Update()
 	}
 }
 
 func main() {
-	pixelgl.Run(run);
+	pixelgl.Run(run)
 }
