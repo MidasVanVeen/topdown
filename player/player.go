@@ -2,43 +2,44 @@ package player
 
 import (
 	"fmt"
-	"math"
 	"github.com/faiface/pixel"
+	"math"
 	"topdown/globals"
 )
 
 const (
-	drag = 400
-	idle = 1
-	running = 2
-	runshooting = 3
+	drag         = 400
+	idle         = 1
+	running      = 2
+	runshooting  = 3
 	idleshooting = 4
 )
 
 type PlayerPhysics struct {
-	Rect pixel.Rect
-	Vel pixel.Vec
+	Rect     pixel.Rect
+	Vel      pixel.Vec
 	MaxSpeed float64
-	State int
-	Life int
+	State    int
+	Life     int
 	Hittimer float64
+	Score int
 }
 
 type PlayerAnimation struct {
-	Sheet pixel.Picture
-	Anims map[string][]pixel.Rect
-	Rate float64
+	Sheet   pixel.Picture
+	Anims   map[string][]pixel.Rect
+	Rate    float64
 	Counter float64
-	Dir float64
-	Frame pixel.Rect
-	Sprite *pixel.Sprite
+	Dir     float64
+	Frame   pixel.Rect
+	Sprite  *pixel.Sprite
 }
 
 func (p *PlayerPhysics) Update(dt float64, ctrl globals.Ctrl) {
 	p.Hittimer -= dt
 	if ctrl.X != 0 || ctrl.Y != 0 && ctrl.S == 0 {
 		p.State = 2
-	} 
+	}
 	if ctrl.S != 0 {
 		p.State = 4
 		p.MaxSpeed = 110
@@ -48,13 +49,13 @@ func (p *PlayerPhysics) Update(dt float64, ctrl globals.Ctrl) {
 	if (ctrl.X != 0 || ctrl.Y != 0) && ctrl.S != 0 {
 		p.State = 3
 	}
-	ectrl := globals.Ctrl{0,0,0}
+	ectrl := globals.Ctrl{0, 0, 0}
 	if ctrl == ectrl {
 		p.State = 1
 	}
 
-	fmt.Println("state: ",p.State)
-	fmt.Println("ctrl: ",ctrl)
+	fmt.Println("state: ", p.State)
+	fmt.Println("ctrl: ", ctrl)
 
 	p.Vel.X += ctrl.X * dt * 800
 	p.Vel.Y += ctrl.Y * dt * 800
@@ -72,41 +73,41 @@ func (p *PlayerPhysics) Update(dt float64, ctrl globals.Ctrl) {
 		p.Vel.Y = -p.MaxSpeed
 	}
 
-	if p.Vel.X > drag * dt {
+	if p.Vel.X > drag*dt {
 		p.Vel.X -= drag * dt
 	}
-	if p.Vel.Y > drag * dt {
+	if p.Vel.Y > drag*dt {
 		p.Vel.Y -= drag * dt
 	}
-	if p.Vel.X < -drag * dt {
+	if p.Vel.X < -drag*dt {
 		p.Vel.X += drag * dt
 	}
-	if p.Vel.Y < -drag * dt {
+	if p.Vel.Y < -drag*dt {
 		p.Vel.Y += drag * dt
 	}
-
 
 	moveX := true
 	moveY := true
 	for angle := 0.0; angle < 2*math.Pi; angle += 0.05 {
-		if globals.CheckWallCollision(p.Rect.Moved(pixel.V(p.Vel.Scaled(dt).X,0)).Center().X + (math.Cos(angle) * p.Rect.W()/3),p.Rect.Moved(pixel.V(p.Vel.Scaled(dt).X,0)).Center().Y + (math.Sin(angle) * p.Rect.H()/3), globals.ColisionImageSrc) == 1 {
+		if globals.CheckWallCollision(p.Rect.Moved(pixel.V(p.Vel.Scaled(dt).X, 0)).Center().X+(math.Cos(angle)*p.Rect.W()/3), p.Rect.Moved(pixel.V(p.Vel.Scaled(dt).X, 0)).Center().Y+(math.Sin(angle)*p.Rect.H()/3), globals.ColisionImageSrc) == 1 {
 			moveX = false
 		}
-		if globals.CheckWallCollision(p.Rect.Moved(pixel.V(0,p.Vel.Scaled(dt).Y)).Center().X + (math.Cos(angle) * p.Rect.W()/3),p.Rect.Moved(pixel.V(0,p.Vel.Scaled(dt).Y)).Center().Y + (math.Sin(angle) * p.Rect.H()/3),globals.ColisionImageSrc) == 1 {
+		if globals.CheckWallCollision(p.Rect.Moved(pixel.V(0, p.Vel.Scaled(dt).Y)).Center().X+(math.Cos(angle)*p.Rect.W()/3), p.Rect.Moved(pixel.V(0, p.Vel.Scaled(dt).Y)).Center().Y+(math.Sin(angle)*p.Rect.H()/3), globals.ColisionImageSrc) == 1 {
 			moveY = false
 		}
 	}
 
 	if moveX {
-		p.Rect = p.Rect.Moved(pixel.V(p.Vel.Scaled(dt).X,0))
+		p.Rect = p.Rect.Moved(pixel.V(p.Vel.Scaled(dt).X, 0))
 	}
 	if moveY {
-		p.Rect = p.Rect.Moved(pixel.V(0,p.Vel.Scaled(dt).Y))
+		p.Rect = p.Rect.Moved(pixel.V(0, p.Vel.Scaled(dt).Y))
 	}
 }
 
 func (p *PlayerPhysics) CheckEnemyHit(r pixel.Rect) {
-	if p.Rect.Intersects(r) && p.Life < 4 && p.Hittimer <= 0 {
+	smaller_r := pixel.R(-r.W()/2 + 40 ,-r.H()/2 + 40,r.W()/2 - 40,r.H()/2 - 40).Moved(r.Center())
+	if p.Rect.Intersects(smaller_r) && p.Life < 4 && p.Hittimer <= 0 {
 		p.Life += 1
 		p.Hittimer = 1
 	}
@@ -115,16 +116,16 @@ func (p *PlayerPhysics) CheckEnemyHit(r pixel.Rect) {
 func (p *PlayerAnimation) Update(dt float64, phys *PlayerPhysics, ctrl globals.Ctrl) {
 	p.Counter += dt
 	if ctrl.X == 1 {
-		p.Dir = math.Pi/2
+		p.Dir = math.Pi / 2
 	}
 	if ctrl.X == -1 {
-		p.Dir = -math.Pi/2
+		p.Dir = -math.Pi / 2
 	}
 	if ctrl.Y == 1 {
 		p.Dir = math.Pi
 	}
 	if ctrl.Y == -1 {
-		p.Dir = math.Pi*2
+		p.Dir = math.Pi * 2
 	}
 
 	if p.Counter >= 5 {
@@ -165,4 +166,4 @@ func (p *PlayerAnimation) Draw(t pixel.Target, phys *PlayerPhysics) {
 		Moved(phys.Rect.Center()).
 		Rotated(phys.Rect.Center(), p.Dir),
 	)
-} 
+}

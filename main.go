@@ -14,11 +14,15 @@ import (
 	"topdown/globals"
 	"topdown/player"
 	"topdown/sheetloader"
+	"os"
 )
 
 const (
 	BULLETTIMEOUT     = 0.2
-	ENEMYSPAWNTIMEOUT = 5
+)
+
+var (
+	ENEMYSPAWNTIMEOUT = 5.0
 )
 
 func SpawnEnemy(x, y float64, enemysheet pixel.Picture, enemyanims map[string][]pixel.Rect) enemy.Enemy {
@@ -47,6 +51,11 @@ func run() {
 	globals.InitGlobals()
 
 	// inladen van alle plaatjes en animaties dmv een sheetloader
+	gameoversheet, gameoveranims, err := sheetloader.LoadSheet("assets/gameover/1.png", "assets/gameover/1.csv", 1000)
+	if err != nil {
+		panic(err)
+	}
+	gameoverRect := pixel.R(-1000, -1000, 1000, 1000)
 	backgroundsheet, backgroundanims, err := sheetloader.LoadSheet("assets/levels/1.png", "assets/levels/1.csv", 1000)
 	if err != nil {
 		panic(err)
@@ -82,6 +91,7 @@ func run() {
 		MaxSpeed: 220,
 		State:    1,
 		Life:     0,
+		Score: 1,
 	}
 	// playeranimations object. hier gebeuren alle animatie gerelateerde dingen.
 	playeranim := &player.PlayerAnimation{
@@ -113,6 +123,8 @@ func run() {
 	bulletsimd.Precision = 32
 	backgroundimd := imdraw.New(backgroundsheet)
 	backgroundimd.Precision = 32
+	gameoverimd := imdraw.New(gameoversheet)
+	gameoverimd.Precision = 32
 	overlayimd := imdraw.New(overlaysheet)
 	overlayimd.Precision = 32
 	healthbarimd := imdraw.New(healthbarsheet)
@@ -121,6 +133,13 @@ func run() {
 	// timer voor schieten. als deze 0 is mag de speler weer shieten.
 	bullettimer := 0.0
 	enemytimer := 0.0
+
+	gameoverSprite := pixel.NewSprite(nil, pixel.Rect{})
+	gameoverSprite.Set(gameoversheet, gameoveranims["main"][0])
+	gameoverSprite.Draw(gameoverimd, pixel.IM.ScaledXY(pixel.ZV, pixel.V(
+		gameoverRect.W()/gameoveranims["main"][0].W(),
+		gameoverRect.H()/gameoveranims["main"][0].H(),
+	)).Moved(gameoverRect.Center()))
 
 	// eerste tijdspunt voor berekenen van deltatime
 	t1 := time.Now()
@@ -162,6 +181,9 @@ func run() {
 		if win.Pressed(pixelgl.KeyS) {
 			ctrl.S = 1
 		}
+		if win.Pressed(pixelgl.KeyQ) {
+			os.Exit(0)
+		}
 
 		bullettimer -= dt // decrement van bullettimer met 1 per seconde
 		if win.Pressed(pixelgl.KeySpace) && ctrl.S == 1 {
@@ -202,10 +224,19 @@ func run() {
 			}
 		}
 
+		for i := 0; i < len(enemies); i++ {
+			if enemies[i].Life <= 0 {
+				enemies = append(enemies[:i], enemies[i+1:]...)
+			}
+		}
+
 		for i := range enemies {
 			enemies[i].Update(dt, playerphys)
 			for _, b := range bullets {
-				enemies[i].CheckHit(&b)
+				s := enemies[i].CheckHit(&b)
+				if s == 1 {
+					ENEMYSPAWNTIMEOUT *= 0.99
+				}
 			}
 		}
 
@@ -240,6 +271,26 @@ func run() {
 
 		if playerphys.Life >= 4 {
 			fmt.Println("Game over")
+			//gameoverimd.Draw(canvas)
+			//canvas.SetMatrix(pixel.IM.Moved(gameoverRect.Center()))
+			//canvas.Draw(win, pixel.IM.Moved(gameoverRect.Center()))
+			playerphys = &player.PlayerPhysics{
+				Vel:      pixel.V(0, 0),
+				Rect:     pixel.R(0, 0, 120*0.90, 96*0.90),
+				MaxSpeed: 220,
+				State:    1,
+				Life:     0,
+			}
+			// playeranimations object. hier gebeuren alle animatie gerelateerde dingen.
+			playeranim = &player.PlayerAnimation{
+				Sheet: playersheet,
+				Anims: playeranims,
+				Rate:  0.2,
+				Dir:   1,
+			}
+			enemies = []enemy.Enemy{}
+			bullets = []bullet.Bullet{}
+			ENEMYSPAWNTIMEOUT = 5.0
 		} else {
 			enemyimd.Draw(canvas)
 

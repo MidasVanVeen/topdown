@@ -14,8 +14,8 @@ type Ctrl struct {
 func CheckWallCollision(x,y float64,img image.Image) int {
 	ximg := int(x/3+500)
 	yimg := int(-y/3+833/2)
-	r,_,_,_ := img.At(ximg,yimg).RGBA() 
-	if r == 65535 {
+	r,_,_,a := img.At(ximg,yimg).RGBA() 
+	if r == 65535 || a == 0 {
 		return 1
 	}
 	return 0
